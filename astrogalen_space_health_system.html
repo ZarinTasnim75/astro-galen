@@ -1,0 +1,1270 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AstroGalen | Space Health & Mission Support System</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Three.js for 3D Holographic Scanner -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        space: {
+                            900: '#060913',
+                            800: '#0B1220',
+                            700: '#131F37',
+                            600: '#1D2D4F',
+                        },
+                        cyan: {
+                            400: '#38bdf8',
+                            500: '#06b6d4',
+                            glow: '#00f3ff'
+                        },
+                        amber: {
+                            glow: '#ffb703'
+                        }
+                    },
+                    fontFamily: {
+                        mono: ['JetBrains Mono', 'monospace', 'sans-serif'],
+                        sans: ['Inter', 'sans-serif']
+                    },
+                    animation: {
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'radar-spin': 'spin 4s linear infinite',
+                        'scanline': 'scanline 8s linear infinite'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;600&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #050811;
+            color: #e2e8f0;
+            overflow-x: hidden;
+        }
+
+        /* Glassmorphism styling */
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.75);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(56, 189, 248, 0.15);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+
+        .glass-panel-glow {
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(6, 182, 212, 0.4);
+            box-shadow: 0 0 20px rgba(6, 182, 212, 0.15);
+        }
+
+        .neon-border-cyan {
+            box-shadow: 0 0 10px rgba(6, 182, 212, 0.3), inset 0 0 10px rgba(6, 182, 212, 0.1);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(11, 18, 32, 0.8);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(56, 189, 248, 0.3);
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(56, 189, 248, 0.6);
+        }
+
+        /* ECG Line Effect */
+        .ecg-grid {
+            background-size: 20px 20px;
+            background-image: linear-gradient(to right, rgba(56, 189, 248, 0.05) 1px, transparent 1px),
+                              linear-gradient(to bottom, rgba(56, 189, 248, 0.05) 1px, transparent 1px);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col bg-space-900 text-slate-200 antialiased selection:bg-cyan-500 selection:text-black">
+
+    <!-- Top Navigation & Mission Control Status Bar -->
+    <header class="sticky top-0 z-50 glass-panel border-b border-slate-800/80 px-4 py-2.5">
+        <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
+            
+            <!-- Brand Logo & Mission Tag -->
+            <div class="flex items-center space-x-3">
+                <div class="relative flex items-center justify-center w-10 h-10 rounded-lg bg-gradient-to-br from-cyan-500/20 to-blue-600/30 border border-cyan-400/40 text-cyan-400">
+                    <i class="fa-solid font-bold fa-heart-pulse text-xl animate-pulse"></i>
+                    <span class="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+                      <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
+                      <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-cyan-500"></span>
+                    </span>
+                </div>
+                <div>
+                    <div class="flex items-center space-x-2">
+                        <h1 class="font-bold text-lg tracking-wider text-white font-mono">ASTRO<span class="text-cyan-400">GALEN</span></h1>
+                        <span class="text-[10px] px-1.5 py-0.5 rounded bg-cyan-950/80 text-cyan-300 border border-cyan-800 font-mono">v4.2 PROD</span>
+                    </div>
+                    <p class="text-xs text-slate-400 flex items-center gap-2">
+                        <span>ARES-4 MARS TRANSFER HABITAT</span>
+                        <span class="inline-block w-1 h-1 rounded-full bg-slate-500"></span>
+                        <span class="text-cyan-400 font-mono">DEEP SPACE TELEMETRY</span>
+                    </p>
+                </div>
+            </div>
+
+            <!-- Realtime Telemetry Status Bar -->
+            <div class="hidden lg:flex items-center space-x-6 text-xs font-mono">
+                <div class="flex items-center space-x-2 bg-space-800/90 px-3 py-1.5 rounded-md border border-slate-700/50">
+                    <i class="fa-solid fa-clock text-cyan-400"></i>
+                    <span class="text-slate-400">MET:</span>
+                    <span id="met-timer" class="text-white font-semibold">DAY 142 • 18:42:09</span>
+                </div>
+
+                <div class="flex items-center space-x-2 bg-space-800/90 px-3 py-1.5 rounded-md border border-slate-700/50">
+                    <i class="fa-solid fa-satellite text-emerald-400"></i>
+                    <span class="text-slate-400">UPLINK:</span>
+                    <span class="text-emerald-400 font-semibold">99.8% (1.24s LAT)</span>
+                </div>
+
+                <div class="flex items-center space-x-2 bg-space-800/90 px-3 py-1.5 rounded-md border border-slate-700/50">
+                    <i class="fa-solid fa-sun text-amber-400"></i>
+                    <span class="text-slate-400">RAD FLUX:</span>
+                    <span id="rad-flux-val" class="text-amber-400 font-semibold">0.42 mSv/d</span>
+                </div>
+            </div>
+
+            <!-- Action Controls & Emergency Drill Trigger -->
+            <div class="flex items-center space-x-3">
+                <button id="btn-emergency-drill" onclick="toggleEmergencyDrill()" class="px-3 py-1.5 rounded-lg text-xs font-semibold font-mono bg-red-950/60 hover:bg-red-900/80 text-red-300 border border-red-700/60 transition flex items-center space-x-2">
+                    <i class="fa-solid fa-triangle-exclamation animate-bounce text-red-400"></i>
+                    <span id="emergency-btn-text">SIMULATE SPE EVENT</span>
+                </button>
+                <div class="h-6 w-[1px] bg-slate-700/60"></div>
+                <button onclick="playTelemetryBeep()" class="p-2 rounded-lg bg-space-800 text-slate-300 hover:text-cyan-400 hover:bg-slate-800 transition" title="Test Audio Alert">
+                    <i class="fa-solid fa-volume-high"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Dashboard Container -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- Navigation Tabs -->
+        <div class="lg:col-span-12 flex flex-wrap gap-2 border-b border-slate-800/80 pb-3">
+            <button onclick="switchTab('vitals')" id="tab-btn-vitals" class="tab-btn active px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 bg-cyan-500/10 text-cyan-400 border border-cyan-500/40">
+                <i class="fa-solid fa-heart-pulse"></i> Crew Vitals & Telemetry
+            </button>
+            <button onclick="switchTab('scanner')" id="tab-btn-scanner" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 text-slate-400 hover:text-slate-200 hover:bg-space-800 border border-transparent">
+                <i class="fa-solid fa-person-rays"></i> 3D Bio-Scanner
+            </button>
+            <button onclick="switchTab('triage')" id="tab-btn-triage" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 text-slate-400 hover:text-slate-200 hover:bg-space-800 border border-transparent">
+                <i class="fa-solid fa-brain-circuit"></i> Galen-AI Diagnostic Suite
+            </button>
+            <button onclick="switchTab('countermeasures')" id="tab-btn-countermeasures" class="tab-btn px-4 py-2 rounded-lg text-sm font-medium transition flex items-center gap-2 text-slate-400 hover:text-slate-200 hover:bg-space-800 border border-transparent">
+                <i class="fa-solid fa-dumbbell"></i> Habitat & Countermeasures
+            </button>
+        </div>
+
+        <!-- ======================================================== -->
+        <!-- TAB 1: CREW VITALS & TELEMETRY DASHBOARD -->
+        <!-- ======================================================== -->
+        <section id="tab-vitals" class="tab-content lg:col-span-12 grid grid-cols-1 lg:grid-cols-12 gap-6">
+            
+            <!-- Left Side: Crew Selection Roster -->
+            <div class="lg:col-span-4 flex flex-col space-y-4">
+                <div class="flex items-center justify-between">
+                    <h2 class="text-sm font-mono font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                        <i class="fa-solid fa-users-gear text-cyan-400"></i> Active Crew Roster (4)
+                    </h2>
+                    <span class="text-xs text-emerald-400 font-mono"><i class="fa-solid fa-circle text-[8px] animate-pulse"></i> Synchronized</span>
+                </div>
+
+                <!-- Crew Cards Stack -->
+                <div id="crew-roster-container" class="space-y-3">
+                    <!-- Dynamic rendering via JS -->
+                </div>
+
+                <!-- Radiation Hazard Alert Card -->
+                <div class="glass-panel p-4 rounded-xl space-y-3 border-amber-500/20">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-mono font-semibold text-amber-400 uppercase flex items-center gap-1.5">
+                            <i class="fa-solid fa-radiation"></i> Galactic Cosmic Rays (GCR)
+                        </span>
+                        <span class="text-xs font-mono text-slate-400">Accumulated</span>
+                    </div>
+                    <div class="w-full bg-space-800 h-2.5 rounded-full overflow-hidden p-0.5 border border-slate-700">
+                        <div id="gcr-progress" class="bg-gradient-to-r from-cyan-500 via-amber-500 to-red-500 h-full rounded-full transition-all duration-500" style="width: 38%;"></div>
+                    </div>
+                    <div class="flex justify-between text-xs font-mono text-slate-400">
+                        <span>Current Trip: <strong class="text-white">68.4 mSv</strong></span>
+                        <span>Max Limit: <strong class="text-slate-300">600 mSv</strong></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Side: Realtime Telemetry Charts & Detail Metrics -->
+            <div class="lg:col-span-8 flex flex-col space-y-6">
+                
+                <!-- Selected Astronaut Header Banner -->
+                <div class="glass-panel-glow p-4 rounded-xl flex flex-wrap items-center justify-between gap-4 border-cyan-500/30">
+                    <div class="flex items-center space-x-4">
+                        <div class="relative">
+                            <img id="active-astronaut-img" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80" alt="Commander Vance" class="w-14 h-14 rounded-full object-cover border-2 border-cyan-400">
+                            <span id="active-astronaut-badge" class="absolute bottom-0 right-0 w-3.5 h-3.5 bg-emerald-500 border-2 border-space-900 rounded-full"></span>
+                        </div>
+                        <div>
+                            <h3 id="active-astronaut-name" class="text-lg font-bold text-white tracking-wide">Cmdr. Elena Vance</h3>
+                            <p id="active-astronaut-role" class="text-xs text-cyan-400 font-mono">Mission Commander • Specialist Bio-Eng</p>
+                            <p class="text-xs text-slate-400 mt-0.5">EVA Status: <span class="text-emerald-400 font-semibold">Habitat Rest</span> | Age: 36 | Mass: 62 kg</p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center space-x-3 text-right font-mono">
+                        <div class="bg-space-800/80 px-3 py-2 rounded-lg border border-slate-700/60">
+                            <div class="text-[10px] text-slate-400">CORE TEMP</div>
+                            <div id="val-temp" class="text-base font-bold text-white">37.1 °C</div>
+                        </div>
+                        <div class="bg-space-800/80 px-3 py-2 rounded-lg border border-slate-700/60">
+                            <div class="text-[10px] text-slate-400">SPO2</div>
+                            <div id="val-spo2" class="text-base font-bold text-cyan-400">99.2 %</div>
+                        </div>
+                        <div class="bg-space-800/80 px-3 py-2 rounded-lg border border-slate-700/60">
+                            <div class="text-[10px] text-slate-400">ICP PRESSURE</div>
+                            <div id="val-icp" class="text-base font-bold text-emerald-400">12.4 mmHg</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Live ECG Real-time Waveform Monitor -->
+                <div class="glass-panel p-4 rounded-xl space-y-3 ecg-grid relative overflow-hidden">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-3">
+                            <span class="flex h-3 w-3 relative">
+                                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                                <span class="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                            </span>
+                            <span class="font-mono text-xs font-semibold text-white tracking-wider">LIVE CARDIAC ECG (LEAD II)</span>
+                        </div>
+                        <div class="flex items-center space-x-3 font-mono">
+                            <span class="text-xs text-slate-400">HEART RATE:</span>
+                            <span id="val-hr" class="text-2xl font-bold text-red-400 tracking-tight">72 <span class="text-xs text-slate-400 font-normal">BPM</span></span>
+                        </div>
+                    </div>
+
+                    <!-- Canvas for ECG Wave -->
+                    <div class="h-32 w-full relative">
+                        <canvas id="ecgCanvas" class="w-full h-full block"></canvas>
+                    </div>
+                </div>
+
+                <!-- Secondary Physiological Telemetry Charts -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    
+                    <!-- Muscle Mass Attenuation & Bone Density Trend -->
+                    <div class="glass-panel p-4 rounded-xl space-y-2">
+                        <div class="flex justify-between items-center text-xs font-mono">
+                            <span class="text-slate-300 font-semibold flex items-center gap-1.5">
+                                <i class="fa-solid fa-bone text-cyan-400"></i> Bone Density Loss Factor
+                            </span>
+                            <span class="text-emerald-400">-0.2% / Month</span>
+                        </div>
+                        <div class="h-36">
+                            <canvas id="boneChart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Intracranial Pressure & Cephalad Fluid Shift -->
+                    <div class="glass-panel p-4 rounded-xl space-y-2">
+                        <div class="flex justify-between items-center text-xs font-mono">
+                            <span class="text-slate-300 font-semibold flex items-center gap-1.5">
+                                <i class="fa-solid fa-brain text-purple-400"></i> Cephalad Fluid Shift (SANS)
+                            </span>
+                            <span class="text-cyan-400">Stable Level</span>
+                        </div>
+                        <div class="h-36">
+                            <canvas id="sansChart"></canvas>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </section>
+
+        <!-- ======================================================== -->
+        <!-- TAB 2: 3D HOLOGRAPHIC BIO-SCANNER -->
+        <!-- ======================================================== -->
+        <section id="tab-scanner" class="tab-content lg:col-span-12 hidden grid grid-cols-1 lg:grid-cols-12 gap-6">
+            
+            <!-- 3D Viewport Controls & Canvas -->
+            <div class="lg:col-span-8 glass-panel p-4 rounded-xl relative flex flex-col items-center justify-center min-h-[480px]">
+                
+                <!-- Overlay Header Controls -->
+                <div class="absolute top-4 left-4 right-4 flex items-center justify-between z-10 font-mono text-xs">
+                    <div class="flex items-center space-x-2 bg-space-800/80 px-3 py-1.5 rounded-lg border border-cyan-500/30">
+                        <i class="fa-solid fa-cube text-cyan-400"></i>
+                        <span class="text-slate-200">HOLOGRAPHIC BIO-RIG v2.8</span>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <button onclick="reset3DCamera()" class="px-2.5 py-1 rounded bg-space-800 hover:bg-slate-800 border border-slate-700 text-slate-300 transition">
+                            <i class="fa-solid fa-rotate text-xs"></i> Reset Camera
+                        </button>
+                        <button onclick="toggleWireframe()" class="px-2.5 py-1 rounded bg-space-800 hover:bg-slate-800 border border-slate-700 text-cyan-400 transition">
+                            <i class="fa-solid fa-border-all text-xs"></i> Wireframe Mode
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 3D Canvas Target Container -->
+                <div id="threejs-container" class="w-full h-[420px] cursor-grab active:cursor-grabbing"></div>
+
+                <!-- Interactive Anatomical Hotspots HUD -->
+                <div class="absolute bottom-4 left-4 right-4 flex justify-center space-x-2 font-mono text-xs flex-wrap gap-y-2 z-10">
+                    <button onclick="selectAnatomicalNode('brain')" class="px-3 py-1.5 rounded-lg bg-space-800/90 border border-cyan-500/40 hover:bg-cyan-500/20 text-cyan-300 transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-brain"></i> Neuro (SANS)
+                    </button>
+                    <button onclick="selectAnatomicalNode('heart')" class="px-3 py-1.5 rounded-lg bg-space-800/90 border border-cyan-500/40 hover:bg-cyan-500/20 text-cyan-300 transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-heart"></i> Cardiovascular
+                    </button>
+                    <button onclick="selectAnatomicalNode('lungs')" class="px-3 py-1.5 rounded-lg bg-space-800/90 border border-cyan-500/40 hover:bg-cyan-500/20 text-cyan-300 transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-lungs"></i> Pulmonary
+                    </button>
+                    <button onclick="selectAnatomicalNode('musculoskeletal')" class="px-3 py-1.5 rounded-lg bg-space-800/90 border border-cyan-500/40 hover:bg-cyan-500/20 text-cyan-300 transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-child"></i> Musculoskeletal
+                    </button>
+                </div>
+            </div>
+
+            <!-- Organ Detailed Analysis Sidebar -->
+            <div class="lg:col-span-4 flex flex-col space-y-4">
+                <div class="glass-panel p-5 rounded-xl space-y-4 border-cyan-500/30">
+                    <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                        <h3 id="scan-node-title" class="font-bold text-white text-base tracking-wide flex items-center gap-2">
+                            <i class="fa-solid fa-brain text-cyan-400"></i> Neuro-Ocular Physiology
+                        </h3>
+                        <span id="scan-node-status" class="px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-950 text-emerald-400 border border-emerald-800">OPTIMAL</span>
+                    </div>
+
+                    <p id="scan-node-description" class="text-xs text-slate-300 leading-relaxed">
+                        Assessments for Spaceflight-Associated Neuro-ocular Syndrome (SANS). Microgravity fluid shifts create mild optic disc edema with slight increase in intracranial pressure (ICP).
+                    </p>
+
+                    <!-- Diagnostic Metrics Table -->
+                    <div class="space-y-2.5 font-mono text-xs">
+                        <div class="flex justify-between p-2 rounded bg-space-800/70 border border-slate-800">
+                            <span class="text-slate-400">Optic Nerve Sheath (ONSD):</span>
+                            <span id="scan-metric-1" class="text-white font-semibold">5.8 mm (Normal)</span>
+                        </div>
+                        <div class="flex justify-between p-2 rounded bg-space-800/70 border border-slate-800">
+                            <span class="text-slate-400">Intracranial Pressure (ICP):</span>
+                            <span id="scan-metric-2" class="text-cyan-400 font-semibold">12.4 mmHg</span>
+                        </div>
+                        <div class="flex justify-between p-2 rounded bg-space-800/70 border border-slate-800">
+                            <span class="text-slate-400">Visual Acuity Loss:</span>
+                            <span id="scan-metric-3" class="text-emerald-400 font-semibold">0.00 Diopters</span>
+                        </div>
+                    </div>
+
+                    <!-- Recommended Countermeasure -->
+                    <div class="p-3 rounded-lg bg-cyan-950/40 border border-cyan-500/30 space-y-1.5">
+                        <div class="text-xs font-mono font-semibold text-cyan-400 flex items-center gap-1.5">
+                            <i class="fa-solid fa-shield-halved"></i> Prescribed Countermeasure
+                        </div>
+                        <p id="scan-countermeasure" class="text-xs text-slate-300">
+                            Apply 25 mmHg Lower Body Negative Pressure (LBNP) for 45 minutes during sleep cycle to draw fluid caudally.
+                        </p>
+                    </div>
+
+                    <button onclick="triggerNodeScan()" class="w-full py-2 rounded-lg bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-mono text-xs font-semibold shadow-lg shadow-cyan-950 transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-rotate-right"></i> RUN DEEP ULTRASOUND RE-SCAN
+                    </button>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- ======================================================== -->
+        <!-- TAB 3: GALEN-AI DIAGNOSTIC SUITE & TRIAGE -->
+        <!-- ======================================================== -->
+        <section id="tab-triage" class="tab-content lg:col-span-12 hidden grid grid-cols-1 lg:grid-cols-12 gap-6">
+            
+            <!-- Symptom Selector & AI Diagnostic Interface -->
+            <div class="lg:col-span-7 space-y-4">
+                <div class="glass-panel p-5 rounded-xl space-y-4 border-cyan-500/20">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-2">
+                            <i class="fa-solid fa-robot text-cyan-400 text-lg"></i>
+                            <h3 class="font-bold text-white tracking-wide text-base">Galen-AI Deep-Space Clinical Assistant</h3>
+                        </div>
+                        <span class="text-xs font-mono px-2 py-0.5 rounded bg-cyan-950 text-cyan-400 border border-cyan-800">
+                            Neural Model v5.8 (Offline-Cap)
+                        </span>
+                    </div>
+
+                    <p class="text-xs text-slate-300">
+                        Select physiological anomalies or symptoms reported by crew during microgravity operations to run diagnostic synthesis and emergency treatment pathways.
+                    </p>
+
+                    <!-- Symptom Chips Selection -->
+                    <div class="space-y-2">
+                        <label class="text-xs font-mono text-slate-400 uppercase tracking-wider">Observed Symptoms / Biomarkers:</label>
+                        <div class="flex flex-wrap gap-2" id="symptom-chips">
+                            <button onclick="toggleSymptom(this, 'space_motion_sickness')" class="symptom-btn px-3 py-1.5 rounded-lg border border-slate-700 bg-space-800 text-xs text-slate-300 hover:border-cyan-500 transition">
+                                + Space Motion Sickness (SMS)
+                            </button>
+                            <button onclick="toggleSymptom(this, 'cephalad_fluid_shift')" class="symptom-btn px-3 py-1.5 rounded-lg border border-slate-700 bg-space-800 text-xs text-slate-300 hover:border-cyan-500 transition">
+                                + Facial Puffiness / Fluid Shift
+                            </button>
+                            <button onclick="toggleSymptom(this, 'arrhythmia')" class="symptom-btn px-3 py-1.5 rounded-lg border border-slate-700 bg-space-800 text-xs text-slate-300 hover:border-cyan-500 transition">
+                                + Ectopic Beat / PVC Arrhythmia
+                            </button>
+                            <button onclick="toggleSymptom(this, 'radiation_nausea')" class="symptom-btn px-3 py-1.5 rounded-lg border border-slate-700 bg-space-800 text-xs text-slate-300 hover:border-cyan-500 transition">
+                                + Acute Solar Radiation Nausea
+                            </button>
+                            <button onclick="toggleSymptom(this, 'lumbar_pain')" class="symptom-btn px-3 py-1.5 rounded-lg border border-slate-700 bg-space-800 text-xs text-slate-300 hover:border-cyan-500 transition">
+                                + Spinal Elongation Back Ache
+                            </button>
+                            <button onclick="toggleSymptom(this, 'sleep_disruption')" class="symptom-btn px-3 py-1.5 rounded-lg border border-slate-700 bg-space-800 text-xs text-slate-300 hover:border-cyan-500 transition">
+                                + Circadian Insomnia
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Custom Prompt Input -->
+                    <div class="flex gap-2 pt-2">
+                        <input id="ai-custom-input" type="text" placeholder="Or enter specific symptom / anomaly query..." class="flex-1 bg-space-800/90 border border-slate-700 rounded-lg px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-cyan-400 font-mono">
+                        <button onclick="runAiDiagnostic()" class="px-4 py-2 bg-cyan-500 hover:bg-cyan-400 text-black font-bold font-mono text-xs rounded-lg transition flex items-center gap-1.5">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i> DIAGNOSE
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Simulation Quick Presets -->
+                <div class="glass-panel p-4 rounded-xl space-y-2">
+                    <h4 class="text-xs font-mono font-semibold text-slate-400 uppercase">Emergency Protocol Benchmarks</h4>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        <button onclick="loadScenario('spe_exposure')" class="p-2.5 rounded-lg bg-space-800 border border-red-900/50 hover:bg-red-950/40 text-left transition">
+                            <div class="text-xs font-semibold text-red-400">SPE Solar Flare</div>
+                            <div class="text-[10px] text-slate-400">Acute Radiation Risk</div>
+                        </button>
+                        <button onclick="loadScenario('cardiac_event')" class="p-2.5 rounded-lg bg-space-800 border border-amber-900/50 hover:bg-amber-950/40 text-left transition">
+                            <div class="text-xs font-semibold text-amber-400">Microgravity PVCs</div>
+                            <div class="text-[10px] text-slate-400">Cardiovascular Drift</div>
+                        </button>
+                        <button onclick="loadScenario('sans_deterioration')" class="p-2.5 rounded-lg bg-space-800 border border-purple-900/50 hover:bg-purple-950/40 text-left transition">
+                            <div class="text-xs font-semibold text-purple-400">Acute SANS Stage 2</div>
+                            <div class="text-[10px] text-slate-400">Optic Disc Swelling</div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AI Output & Treatment Plan Console -->
+            <div class="lg:col-span-5 flex flex-col space-y-4">
+                <div class="glass-panel-glow p-5 rounded-xl flex-1 flex flex-col space-y-4 border-cyan-500/40">
+                    <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                        <span class="text-xs font-mono font-semibold text-cyan-400 flex items-center gap-2">
+                            <i class="fa-solid fa-microchip"></i> DIAGNOSTIC DIAGRAM & THERAPY
+                        </span>
+                        <span id="ai-confidence" class="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-300">CONFIDENCE: --</span>
+                    </div>
+
+                    <!-- Dynamic Output Box -->
+                    <div id="ai-output-box" class="flex-1 space-y-3 text-xs text-slate-300 font-mono overflow-y-auto max-h-[380px] pr-2">
+                        <p class="text-slate-500 italic">Select one or more symptoms or load an emergency protocol scenario to generate real-time AI clinical analysis...</p>
+                    </div>
+
+                    <!-- Execute Protocol Action Button -->
+                    <div id="ai-action-footer" class="hidden pt-3 border-t border-slate-800">
+                        <button onclick="applyAiProtocol()" class="w-full py-2.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-mono text-xs font-bold shadow-lg shadow-emerald-950 transition flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-check-circle"></i> TRANSMIT PROTOCOL TO CREW COMM
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- ======================================================== -->
+        <!-- TAB 4: HABITAT & COUNTERMEASURES MONITOR -->
+        <!-- ======================================================== -->
+        <section id="tab-countermeasures" class="tab-content lg:col-span-12 hidden grid grid-cols-1 lg:grid-cols-12 gap-6">
+            
+            <!-- Daily Microgravity Exercise Schedule -->
+            <div class="lg:col-span-6 glass-panel p-5 rounded-xl space-y-4">
+                <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                    <h3 class="font-bold text-white text-base flex items-center gap-2">
+                        <i class="fa-solid fa-dumbbell text-cyan-400"></i> Daily Exercise Countermeasures (ARED)
+                    </h3>
+                    <span class="text-xs font-mono text-emerald-400">Target: 2.5 hrs/day</span>
+                </div>
+
+                <p class="text-xs text-slate-300">
+                    Advanced Resistive Exercise Device (ARED) & T2 Treadmill Compliance matrix to counter bone mineral density loss and muscle atrophy.
+                </p>
+
+                <div class="space-y-3 font-mono text-xs">
+                    <div class="p-3 rounded-lg bg-space-800 border border-slate-700/80 flex items-center justify-between">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-8 h-8 rounded-full bg-cyan-950 text-cyan-400 border border-cyan-700 flex items-center justify-center">
+                                <i class="fa-solid fa-person-running"></i>
+                            </div>
+                            <div>
+                                <div class="font-semibold text-white">Cmdr. Elena Vance</div>
+                                <div class="text-[10px] text-slate-400">T2 Treadmill Vibration Isolation</div>
+                            </div>
+                        </div>
+                        <span class="px-2 py-1 rounded bg-emerald-950 text-emerald-400 text-[10px] border border-emerald-800">COMPLETED (60m)</span>
+                    </div>
+
+                    <div class="p-3 rounded-lg bg-space-800 border border-slate-700/80 flex items-center justify-between">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-8 h-8 rounded-full bg-cyan-950 text-cyan-400 border border-cyan-700 flex items-center justify-center">
+                                <i class="fa-solid fa-weight-hanging"></i>
+                            </div>
+                            <div>
+                                <div class="font-semibold text-white">Dr. Marcus Chen</div>
+                                <div class="text-[10px] text-slate-400">ARED Heavy Squats & Deadlifts</div>
+                            </div>
+                        </div>
+                        <span class="px-2 py-1 rounded bg-amber-950 text-amber-400 text-[10px] border border-amber-800">IN PROGRESS (35/90m)</span>
+                    </div>
+
+                    <div class="p-3 rounded-lg bg-space-800 border border-slate-700/80 flex items-center justify-between">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-8 h-8 rounded-full bg-cyan-950 text-cyan-400 border border-cyan-700 flex items-center justify-center">
+                                <i class="fa-solid fa-bicycle"></i>
+                            </div>
+                            <div>
+                                <div class="font-semibold text-white">Eng. Alexey Volkov</div>
+                                <div class="text-[10px] text-slate-400">CEVIS Cycle Ergometer Peak Load</div>
+                            </div>
+                        </div>
+                        <span class="px-2 py-1 rounded bg-slate-800 text-slate-400 text-[10px] border border-slate-700">SCHEDULED 16:00</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Habitat Bio-Environmental Indicators -->
+            <div class="lg:col-span-6 glass-panel p-5 rounded-xl space-y-4">
+                <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                    <h3 class="font-bold text-white text-base flex items-center gap-2">
+                        <i class="fa-solid fa-wind text-emerald-400"></i> Habitat Atmospheric Support (ECLSS)
+                    </h3>
+                    <span class="text-xs font-mono text-cyan-400">Loop Efficiency 94.2%</span>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3 font-mono">
+                    <div class="p-3 rounded-lg bg-space-800/80 border border-slate-700">
+                        <div class="text-[10px] text-slate-400">O2 PARTIAL PRESSURE</div>
+                        <div class="text-lg font-bold text-emerald-400">21.2 kPa</div>
+                        <div class="text-[10px] text-slate-500 mt-0.5">Nominal: 21.0 kPa</div>
+                    </div>
+
+                    <div class="p-3 rounded-lg bg-space-800/80 border border-slate-700">
+                        <div class="text-[10px] text-slate-400">CO2 CONCENTRATION</div>
+                        <div class="text-lg font-bold text-amber-400">3.1 mmHg</div>
+                        <div class="text-[10px] text-slate-500 mt-0.5">Scrubber Active</div>
+                    </div>
+
+                    <div class="p-3 rounded-lg bg-space-800/80 border border-slate-700">
+                        <div class="text-[10px] text-slate-400">HAB CABIN PRESSURE</div>
+                        <div class="text-lg font-bold text-white">101.3 kPa</div>
+                        <div class="text-[10px] text-slate-500 mt-0.5">Sea-Level Std</div>
+                    </div>
+
+                    <div class="p-3 rounded-lg bg-space-800/80 border border-slate-700">
+                        <div class="text-[10px] text-slate-400">WATER RECOVERY</div>
+                        <div class="text-lg font-bold text-cyan-400">98.1 %</div>
+                        <div class="text-[10px] text-slate-500 mt-0.5">Urine Distillation OK</div>
+                    </div>
+                </div>
+
+                <!-- Circadian Dynamic Spectrum Lighting Control -->
+                <div class="p-3 rounded-lg bg-space-800 border border-slate-700 space-y-2">
+                    <div class="flex justify-between items-center text-xs font-mono">
+                        <span class="text-slate-300 font-semibold"><i class="fa-solid fa-sun text-amber-400"></i> Circadian Lighting Spectrum</span>
+                        <span class="text-cyan-400">BLUE-ENRICHED SHIFT</span>
+                    </div>
+                    <div class="w-full bg-gradient-to-r from-blue-600 via-amber-300 to-indigo-900 h-3 rounded-full border border-slate-600"></div>
+                    <p class="text-[10px] text-slate-400">Promotes alertness during duty shift (460nm wavelength accentuation).</p>
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- System Footer -->
+    <footer class="mt-auto border-t border-slate-800/80 glass-panel py-3 px-4 text-center text-xs font-mono text-slate-500">
+        <div class="max-w-7xl mx-auto flex flex-wrap justify-between items-center gap-2">
+            <div>ASTROGALEN DEEP-SPACE MEDICAL ARCHITECTURE • ESA/NASA ARES-4</div>
+            <div class="flex items-center space-x-4">
+                <span>SYSTEM STATUS: <strong class="text-emerald-400">NOMINAL</strong></span>
+                <span>BIO-TELEMETRY SYNC: <strong class="text-cyan-400">ACTIVE</strong></span>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        /* ======================================================== */
+        /* CREW MOCK DATA & STATE MANAGEMENT */
+        /* ======================================================== */
+        const crewMembers = [
+            {
+                id: 'vance',
+                name: 'Cmdr. Elena Vance',
+                role: 'Mission Commander • Specialist Bio-Eng',
+                img: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80',
+                hr: 72,
+                spo2: 99.2,
+                temp: 37.1,
+                icp: 12.4,
+                status: 'NOMINAL',
+                sansRisk: 'Low',
+                boneLoss: -0.2
+            },
+            {
+                id: 'chen',
+                name: 'Dr. Marcus Chen',
+                role: 'Chief Medical Officer',
+                img: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=150&q=80',
+                hr: 68,
+                spo2: 98.8,
+                temp: 36.9,
+                icp: 11.8,
+                status: 'NOMINAL',
+                sansRisk: 'Minimal',
+                boneLoss: -0.15
+            },
+            {
+                id: 'jenkins',
+                name: 'Spec. Sarah Jenkins',
+                role: 'Payload & Life Support Specialist',
+                img: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=150&q=80',
+                hr: 84,
+                spo2: 97.9,
+                temp: 37.3,
+                icp: 15.1,
+                status: 'CAUTION',
+                sansRisk: 'Moderate',
+                boneLoss: -0.4
+            },
+            {
+                id: 'volkov',
+                name: 'Eng. Alexey Volkov',
+                role: 'Flight Systems Engineer',
+                img: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=150&q=80',
+                hr: 64,
+                spo2: 99.5,
+                temp: 36.8,
+                icp: 10.9,
+                status: 'NOMINAL',
+                sansRisk: 'Low',
+                boneLoss: -0.1
+            }
+        ];
+
+        let activeCrewId = 'vance';
+        let emergencyMode = false;
+        let selectedSymptoms = new Set();
+
+        /* ======================================================== */
+        /* TAB SWITCHING SYSTEM */
+        /* ======================================================== */
+        function switchTab(tabId) {
+            /* Hide all tab contents */
+            document.querySelectorAll('.tab-content').forEach(tab => tab.classList.add('hidden'));
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('bg-cyan-500/10', 'text-cyan-400', 'border-cyan-500/40');
+                btn.classList.add('text-slate-400', 'border-transparent');
+            });
+
+            /* Show active tab */
+            const activeTab = document.getElementById(`tab-${tabId}`);
+            if (activeTab) activeTab.classList.remove('hidden');
+
+            const activeBtn = document.getElementById(`tab-btn-${tabId}`);
+            if (activeBtn) {
+                activeBtn.classList.add('bg-cyan-500/10', 'text-cyan-400', 'border-cyan-500/40');
+                activeBtn.classList.remove('text-slate-400', 'border-transparent');
+            }
+
+            /* Trigger 3D canvas resize when scanner tab is rendered */
+            if (tabId === 'scanner' && renderer) {
+                setTimeout(() => {
+                    const container = document.getElementById('threejs-container');
+                    camera.aspect = container.clientWidth / container.clientHeight;
+                    camera.updateProjectionMatrix();
+                    renderer.setSize(container.clientWidth, container.clientHeight);
+                }, 100);
+            }
+        }
+
+        /* ======================================================== */
+        /* CREW ROSTER INITIALIZATION */
+        /* ======================================================== */
+        function renderCrewRoster() {
+            const container = document.getElementById('crew-roster-container');
+            container.innerHTML = '';
+
+            crewMembers.forEach(member => {
+                const isActive = member.id === activeCrewId;
+                const statusColor = member.status === 'NOMINAL' ? 'emerald' : member.status === 'CAUTION' ? 'amber' : 'red';
+
+                const card = document.createElement('div');
+                card.className = `glass-panel p-3 rounded-xl cursor-pointer transition flex items-center justify-between border ${
+                    isActive ? 'border-cyan-400/80 bg-cyan-950/20' : 'border-slate-800 hover:border-slate-700'
+                }`;
+                card.onclick = () => selectCrewMember(member.id);
+
+                card.innerHTML = `
+                    <div class="flex items-center space-x-3">
+                        <img src="${member.img}" alt="${member.name}" class="w-10 h-10 rounded-full object-cover border border-slate-700">
+                        <div>
+                            <div class="text-xs font-bold text-white font-mono">${member.name}</div>
+                            <div class="text-[10px] text-slate-400">${member.role.split('•')[0]}</div>
+                        </div>
+                    </div>
+                    <div class="text-right font-mono">
+                        <div class="text-xs font-bold text-${statusColor}-400">${member.hr} <span class="text-[9px] font-normal text-slate-400">BPM</span></div>
+                        <span class="inline-block px-1.5 py-0.2 rounded text-[9px] bg-${statusColor}-950 text-${statusColor}-400 border border-${statusColor}-800">${member.status}</span>
+                    </div>
+                `;
+
+                container.appendChild(card);
+            });
+        }
+
+        function selectCrewMember(id) {
+            activeCrewId = id;
+            const member = crewMembers.find(m => m.id === id);
+            if (!member) return;
+
+            renderCrewRoster();
+
+            /* Update Astronaut Banner Details */
+            document.getElementById('active-astronaut-name').innerText = member.name;
+            document.getElementById('active-astronaut-role').innerText = member.role;
+            document.getElementById('active-astronaut-img').src = member.img;
+            document.getElementById('val-temp').innerText = `${member.temp} °C`;
+            document.getElementById('val-spo2').innerText = `${member.spo2} %`;
+            document.getElementById('val-icp').innerText = `${member.icp} mmHg`;
+            document.getElementById('val-hr').innerHTML = `${member.hr} <span class="text-xs text-slate-400 font-normal">BPM</span>`;
+
+            playTelemetryBeep();
+        }
+
+        /* ======================================================== */
+        /* REALTIME ECG CANVAS RENDERER */
+        /* ======================================================== */
+        const ecgCanvas = document.getElementById('ecgCanvas');
+        const ecgCtx = ecgCanvas.getContext('2d');
+        let ecgPoints = [];
+        let ecgX = 0;
+
+        function resizeEcgCanvas() {
+            if (ecgCanvas) {
+                ecgCanvas.width = ecgCanvas.parentElement.clientWidth;
+                ecgCanvas.height = ecgCanvas.parentElement.clientHeight;
+            }
+        }
+        window.addEventListener('resize', resizeEcgCanvas);
+        resizeEcgCanvas();
+
+        function drawEcgFrame() {
+            if (!ecgCtx) return;
+
+            const width = ecgCanvas.width;
+            const height = ecgCanvas.height;
+            const midY = height / 2;
+
+            /* Fade out background trail */
+            ecgCtx.fillStyle = 'rgba(6, 9, 19, 0.15)';
+            ecgCtx.fillRect(ecgX, 0, 8, height);
+
+            /* Generate synthetic ECG heartbeat baseline pulse */
+            let y = midY;
+            const cycle = ecgX % 100;
+
+            if (cycle > 30 && cycle < 34) y = midY - 10; // P wave
+            else if (cycle >= 34 && cycle < 38) y = midY + 5;
+            else if (cycle >= 38 && cycle < 42) y = midY - 45; // QRS complex spike
+            else if (cycle >= 42 && cycle < 46) y = midY + 18;
+            else if (cycle >= 54 && cycle < 66) y = midY - 12; // T wave
+
+            /* Small noise variance */
+            y += (Math.random() - 0.5) * 2;
+
+            /* Draw line segment */
+            ecgCtx.beginPath();
+            ecgCtx.strokeStyle = emergencyMode ? '#ef4444' : '#38bdf8';
+            ecgCtx.lineWidth = 2;
+            ecgCtx.shadowBlur = 8;
+            ecgCtx.shadowColor = emergencyMode ? '#ef4444' : '#38bdf8';
+
+            ecgCtx.moveTo(ecgX - 1, ecgPoints[ecgX - 1] || midY);
+            ecgCtx.lineTo(ecgX, y);
+            ecgCtx.stroke();
+
+            ecgPoints[ecgX] = y;
+
+            ecgX = (ecgX + 2) % width;
+
+            requestAnimationFrame(drawEcgFrame);
+        }
+        drawEcgFrame();
+
+        /* ======================================================== */
+        /* CHART.JS HISTORICAL CHARTS */
+        /* ======================================================== */
+        let boneChart, sansChart;
+
+        function initCharts() {
+            /* Bone Density Chart */
+            const ctxBone = document.getElementById('boneChart').getContext('2d');
+            boneChart = new Chart(ctxBone, {
+                type: 'line',
+                data: {
+                    labels: ['M1', 'M2', 'M3', 'M4', 'M5', 'M6'],
+                    datasets: [{
+                        label: 'Femoral Head Density (% Delta)',
+                        data: [0, -0.2, -0.45, -0.6, -0.8, -0.95],
+                        borderColor: '#06b6d4',
+                        backgroundColor: 'rgba(6, 182, 212, 0.1)',
+                        fill: true,
+                        tension: 0.3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { ticks: { color: '#64748b', font: { size: 10 } }, grid: { display: false } },
+                        y: { ticks: { color: '#64748b', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' } }
+                    }
+                }
+            });
+
+            /* SANS Intracranial Pressure Trend */
+            const ctxSans = document.getElementById('sansChart').getContext('2d');
+            sansChart = new Chart(ctxSans, {
+                type: 'line',
+                data: {
+                    labels: ['00:00', '04:00', '08:00', '12:00', '16:00', '20:00'],
+                    datasets: [{
+                        label: 'ICP (mmHg)',
+                        data: [11.2, 11.8, 12.4, 12.1, 12.6, 12.4],
+                        borderColor: '#c084fc',
+                        backgroundColor: 'rgba(192, 132, 252, 0.1)',
+                        fill: true,
+                        tension: 0.3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { ticks: { color: '#64748b', font: { size: 10 } }, grid: { display: false } },
+                        y: { ticks: { color: '#64748b', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' } }
+                    }
+                }
+            });
+        }
+
+        /* ======================================================== */
+        /* THREE.JS 3D HOLOGRAPHIC SCANNER */
+        /* ======================================================== */
+        let scene, camera, renderer, mannequinGroup, wireframeMesh;
+
+        function init3DScanner() {
+            const container = document.getElementById('threejs-container');
+            if (!container) return;
+
+            scene = new THREE.Scene();
+
+            camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+            camera.position.set(0, 0, 7);
+
+            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            container.appendChild(renderer.domElement);
+
+            mannequinGroup = new THREE.Group();
+
+            /* Build Sci-Fi Mannequin Structure using Geometries */
+            const cyanMat = new THREE.MeshBasicMaterial({ color: 0x00f3ff, wireframe: true, transparent: true, opacity: 0.4 });
+            const jointMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, wireframe: false });
+
+            // Torso
+            const torsoGeo = new THREE.CylinderGeometry(0.6, 0.4, 1.8, 12);
+            const torso = new THREE.Mesh(torsoGeo, cyanMat);
+            torso.position.y = 0.2;
+            mannequinGroup.add(torso);
+
+            // Head
+            const headGeo = new THREE.SphereGeometry(0.35, 12, 12);
+            const head = new THREE.Mesh(headGeo, cyanMat);
+            head.position.y = 1.45;
+            mannequinGroup.add(head);
+
+            // Arms & Legs
+            const limbMat = new THREE.MeshBasicMaterial({ color: 0x06b6d4, wireframe: true, transparent: true, opacity: 0.3 });
+            
+            // Left Arm
+            const armL = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.1, 1.4, 8), limbMat);
+            armL.position.set(-0.85, 0.3, 0);
+            armL.rotation.z = 0.2;
+            mannequinGroup.add(armL);
+
+            // Right Arm
+            const armR = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.1, 1.4, 8), limbMat);
+            armR.position.set(0.85, 0.3, 0);
+            armR.rotation.z = -0.2;
+            mannequinGroup.add(armR);
+
+            // Left Leg
+            const legL = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.12, 1.8, 8), limbMat);
+            legL.position.set(-0.35, -1.3, 0);
+            mannequinGroup.add(legL);
+
+            // Right Leg
+            const legR = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.12, 1.8, 8), limbMat);
+            legR.position.set(0.35, -1.3, 0);
+            mannequinGroup.add(legR);
+
+            // Heart Glowing Core
+            const heartGeo = new THREE.SphereGeometry(0.18, 16, 16);
+            const heartMat = new THREE.MeshBasicMaterial({ color: 0xef4444, transparent: true, opacity: 0.8 });
+            const heartCore = new THREE.Mesh(heartGeo, heartMat);
+            heartCore.position.set(0.1, 0.4, 0.1);
+            mannequinGroup.add(heartCore);
+
+            scene.add(mannequinGroup);
+
+            // Add background grid particles
+            const particleGeo = new THREE.BufferGeometry();
+            const count = 300;
+            const posArray = new Float32Array(count * 3);
+            for (let i = 0; i < count * 3; i++) {
+                posArray[i] = (Math.random() - 0.5) * 12;
+            }
+            particleGeo.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+            const particleMat = new THREE.PointsMaterial({ size: 0.02, color: 0x38bdf8, transparent: true, opacity: 0.5 });
+            const particles = new THREE.Points(particleGeo, particleMat);
+            scene.add(particles);
+
+            /* Rotation Animation Loop */
+            function animate3D() {
+                requestAnimationFrame(animate3D);
+                mannequinGroup.rotation.y += 0.006;
+                particles.rotation.y -= 0.001;
+                renderer.render(scene, camera);
+            }
+            animate3D();
+        }
+
+        function reset3DCamera() {
+            if (mannequinGroup) {
+                mannequinGroup.rotation.set(0, 0, 0);
+                camera.position.set(0, 0, 7);
+            }
+        }
+
+        function toggleWireframe() {
+            if (!mannequinGroup) return;
+            mannequinGroup.children.forEach(child => {
+                if (child.material) {
+                    child.material.wireframe = !child.material.wireframe;
+                }
+            });
+        }
+
+        /* ======================================================== */
+        /* ANATOMICAL NODE DATA & DIAGNOSIS */
+        /* ======================================================== */
+        const nodeDetails = {
+            brain: {
+                title: 'Neuro-Ocular Physiology (SANS)',
+                status: 'NOMINAL / MONITOR',
+                statusClass: 'bg-emerald-950 text-emerald-400 border-emerald-800',
+                desc: 'Assessments for Spaceflight-Associated Neuro-ocular Syndrome (SANS). Microgravity fluid shifts create mild optic disc edema with slight increase in intracranial pressure (ICP).',
+                m1: '5.8 mm (Normal)',
+                m2: '12.4 mmHg',
+                m3: '0.00 Diopters',
+                countermeasure: 'Apply 25 mmHg Lower Body Negative Pressure (LBNP) for 45 minutes during sleep cycle to draw fluid caudally.'
+            },
+            heart: {
+                title: 'Cardiovascular & Atrial Volume',
+                status: 'NOMINAL',
+                statusClass: 'bg-emerald-950 text-emerald-400 border-emerald-800',
+                desc: 'Cardiac atrophy reduction monitor. De-conditioning mitigation active. Normal cardiac stroke volume maintained via daily ergometer workouts.',
+                m1: 'Stroke Vol: 78 mL',
+                m2: 'Mean BP: 88 mmHg',
+                m3: 'Cardiac Index: 2.8 L/min',
+                countermeasure: 'Maintain high-intensity interval training (HIIT) protocol on CEVIS cycle.'
+            },
+            lungs: {
+                title: 'Pulmonary Ventilation & Oxygenation',
+                status: 'OPTIMAL',
+                statusClass: 'bg-emerald-950 text-emerald-400 border-emerald-800',
+                desc: 'Uniform lung perfusion balance in zero-G. No pulmonary edema or alveolar collapse detected.',
+                m1: 'SpO2: 99.2%',
+                m2: 'Resp Rate: 14 rpm',
+                m3: 'VO2 Max: 48 mL/kg/min',
+                countermeasure: 'Standard cabin oxygen partial pressure (21.2 kPa).'
+            },
+            musculoskeletal: {
+                title: 'Bone Mineral Density & Muscle Attenuation',
+                status: 'CAUTION',
+                statusClass: 'bg-amber-950 text-amber-400 border-amber-800',
+                desc: 'Calcaneus and lumbar spine osteoclast activity slightly elevated due to persistent microgravity unloading.',
+                m1: 'Femoral Loss: -0.2%/mo',
+                m2: 'Soleus Mass: 96%',
+                m3: 'Calcium Ion: 2.3 mmol/L',
+                countermeasure: 'Increase ARED heavy resistive loading to 110% body-mass equivalent; boost Vitamin D3 supplement.'
+            }
+        };
+
+        function selectAnatomicalNode(nodeKey) {
+            const data = nodeDetails[nodeKey];
+            if (!data) return;
+
+            document.getElementById('scan-node-title').innerHTML = `<i class="fa-solid fa-crosshairs text-cyan-400"></i> ${data.title}`;
+            document.getElementById('scan-node-status').innerText = data.status;
+            document.getElementById('scan-node-description').innerText = data.desc;
+            document.getElementById('scan-metric-1').innerText = data.m1;
+            document.getElementById('scan-metric-2').innerText = data.m2;
+            document.getElementById('scan-metric-3').innerText = data.m3;
+            document.getElementById('scan-countermeasure').innerText = data.countermeasure;
+
+            playTelemetryBeep();
+        }
+
+        function triggerNodeScan() {
+            const statusEl = document.getElementById('scan-node-status');
+            statusEl.innerText = "SCANNING...";
+            statusEl.className = "px-2 py-0.5 rounded text-[10px] font-mono bg-cyan-950 text-cyan-400 border border-cyan-800 animate-pulse";
+
+            setTimeout(() => {
+                statusEl.innerText = "OPTIMAL";
+                statusEl.className = "px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-950 text-emerald-400 border border-emerald-800";
+            }, 1200);
+        }
+
+        /* ======================================================== */
+        /* GALEN-AI DIAGNOSIS ENGINE */
+        /* ======================================================== */
+        function toggleSymptom(btn, symptomId) {
+            if (selectedSymptoms.has(symptomId)) {
+                selectedSymptoms.delete(symptomId);
+                btn.classList.remove('bg-cyan-500/20', 'border-cyan-400', 'text-cyan-300');
+                btn.classList.add('bg-space-800', 'border-slate-700', 'text-slate-300');
+            } else {
+                selectedSymptoms.add(symptomId);
+                btn.classList.add('bg-cyan-500/20', 'border-cyan-400', 'text-cyan-300');
+                btn.classList.remove('bg-space-800', 'border-slate-700');
+            }
+        }
+
+        function runAiDiagnostic() {
+            const box = document.getElementById('ai-output-box');
+            const conf = document.getElementById('ai-confidence');
+            const footer = document.getElementById('ai-action-footer');
+
+            box.innerHTML = `<div class="text-cyan-400 animate-pulse"><i class="fa-solid fa-spinner fa-spin"></i> Processing neural diagnostic vectors across deep-space telemetry database...</div>`;
+
+            setTimeout(() => {
+                conf.innerText = "CONFIDENCE: 96.4%";
+                footer.classList.remove('hidden');
+
+                if (selectedSymptoms.has('arrhythmia') || selectedSymptoms.has('radiation_nausea')) {
+                    box.innerHTML = `
+                        <div class="p-3 bg-red-950/40 border border-red-500/40 rounded-lg space-y-2">
+                            <div class="text-red-400 font-bold flex items-center gap-2">
+                                <i class="fa-solid fa-triangle-exclamation"></i> HIGH RISK DIAGNOSIS: Galactic Particle Event / Electrolyte Drift
+                            </div>
+                            <p class="text-slate-200">
+                                Multi-system indicator points towards mild radiation-induced nausea exacerbated by potassium depletion under microgravity fluid shifts.
+                            </p>
+                            <div class="text-xs text-cyan-300 font-bold mt-2">RECOMMENDED PROTOCOL:</div>
+                            <ul class="list-disc list-inside text-slate-300 space-y-1">
+                                <li>Administer 4mg Ondansetron IV / oral disintegrating tab.</li>
+                                <li>Move crew member to Storm Shelter Hab Module 2.</li>
+                                <li>Oral electrolyte rehydration solution (500mL).</li>
+                            </ul>
+                        </div>
+                    `;
+                } else {
+                    box.innerHTML = `
+                        <div class="p-3 bg-cyan-950/40 border border-cyan-500/40 rounded-lg space-y-2">
+                            <div class="text-cyan-400 font-bold flex items-center gap-2">
+                                <i class="fa-solid fa-notes-medical"></i> PRIMARY DIAGNOSIS: Standard Microgravity Adaptation (SANS / Neuro-fluid Shift)
+                            </div>
+                            <p class="text-slate-200">
+                                Symptoms consistent with cephalad venous engorgement and Otolith recalibration in microgravity.
+                            </p>
+                            <div class="text-xs text-cyan-300 font-bold mt-2">RECOMMENDED COUNTERMEASURE:</div>
+                            <ul class="list-disc list-inside text-slate-300 space-y-1">
+                                <li>LBNP therapy session (25 mmHg for 45 mins).</li>
+                                <li>Promethazine 25mg ODT for motion intolerance if required.</li>
+                                <li>Continue ARED resistive ergometer routine.</li>
+                            </ul>
+                        </div>
+                    `;
+                }
+            }, 800);
+        }
+
+        function loadScenario(type) {
+            switchTab('triage');
+            selectedSymptoms.clear();
+            document.querySelectorAll('.symptom-btn').forEach(btn => {
+                btn.classList.remove('bg-cyan-500/20', 'border-cyan-400', 'text-cyan-300');
+                btn.classList.add('bg-space-800', 'border-slate-700', 'text-slate-300');
+            });
+
+            if (type === 'spe_exposure') {
+                toggleSymptom(document.querySelectorAll('.symptom-btn')[3], 'radiation_nausea');
+            } else if (type === 'cardiac_event') {
+                toggleSymptom(document.querySelectorAll('.symptom-btn')[2], 'arrhythmia');
+            } else {
+                toggleSymptom(document.querySelectorAll('.symptom-btn')[1], 'cephalad_fluid_shift');
+            }
+
+            runAiDiagnostic();
+        }
+
+        function applyAiProtocol() {
+            playTelemetryBeep();
+            alertMessage("Protocol transmitted to Mission Control & Crew Hab Comm Terminal.", "SUCCESS");
+        }
+
+        /* ======================================================== */
+        /* EMERGENCY SIMULATOR & AUDIO SYNTHESIZER */
+        /* ======================================================== */
+        function toggleEmergencyDrill() {
+            emergencyMode = !emergencyMode;
+            const btnText = document.getElementById('emergency-btn-text');
+            const radVal = document.getElementById('rad-flux-val');
+
+            if (emergencyMode) {
+                btnText.innerText = "ABORT SPE DRILL";
+                radVal.innerText = "14.8 mSv/d FLARE";
+                radVal.className = "text-red-400 font-bold animate-pulse";
+                document.body.classList.add('border-2', 'border-red-600/50');
+                playAlertSound();
+            } else {
+                btnText.innerText = "SIMULATE SPE EVENT";
+                radVal.innerText = "0.42 mSv/d";
+                radVal.className = "text-amber-400 font-semibold";
+                document.body.classList.remove('border-2', 'border-red-600/50');
+            }
+        }
+
+        /* Web Audio API Tone Synthesizer for futuristic click feedback */
+        function playTelemetryBeep() {
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(880, ctx.currentTime); // A5 note
+                gain.gain.setValueAtTime(0.05, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.1);
+
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+
+                osc.start();
+                osc.stop(ctx.currentTime + 0.1);
+            } catch (e) {
+                // Audio context suppressed by browser policy
+            }
+        }
+
+        function playAlertSound() {
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(440, ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(220, ctx.currentTime + 0.3);
+
+                gain.gain.setValueAtTime(0.1, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+
+                osc.start();
+                osc.stop(ctx.currentTime + 0.3);
+            } catch (e) {}
+        }
+
+        function alertMessage(msg, type) {
+            const toast = document.createElement('div');
+            toast.className = `fixed bottom-6 right-6 z-50 px-4 py-3 rounded-lg shadow-2xl font-mono text-xs text-white border flex items-center space-x-2 ${
+                type === 'SUCCESS' ? 'bg-emerald-950/90 border-emerald-500' : 'bg-red-950/90 border-red-500'
+            }`;
+            toast.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-400"></i> <span>${msg}</span>`;
+            document.body.appendChild(toast);
+
+            setTimeout(() => {
+                toast.remove();
+            }, 3000);
+        }
+
+        /* Realtime Clock Update */
+        setInterval(() => {
+            const now = new Date();
+            const hours = String(now.getUTCHours()).padStart(2, '0');
+            const mins = String(now.getUTCMinutes()).padStart(2, '0');
+            const secs = String(now.getUTCSeconds()).padStart(2, '0');
+            document.getElementById('met-timer').innerText = `DAY 142 • ${hours}:${mins}:${secs}`;
+
+            /* Fluctuating vital stats for realistic mission feel */
+            const activeMember = crewMembers.find(m => m.id === activeCrewId);
+            if (activeMember && !emergencyMode) {
+                const deltaHR = (Math.random() - 0.5) * 2;
+                const newHR = Math.round(activeMember.hr + deltaHR);
+                document.getElementById('val-hr').innerHTML = `${newHR} <span class="text-xs text-slate-400 font-normal">BPM</span>`;
+            }
+        }, 1000);
+
+        /* ======================================================== */
+        /* ON LOAD INITIALIZATION */
+        /* ======================================================== */
+        window.onload = function () {
+            renderCrewRoster();
+            initCharts();
+            init3DScanner();
+            selectAnatomicalNode('brain');
+        };
+    </script>
+</body>
+</html>
